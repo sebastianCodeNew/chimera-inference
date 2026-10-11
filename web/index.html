@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chimera-Inference | SOTA Local AI</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --card-border: #1f293d;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --accent: #10b981;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --user-bubble: #1e3a8a;
+      --ai-bubble: #1f2937;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    
+    /* Header */
+    header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--card-border);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-title { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; }
+    .badge {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge-gpu { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* Main Layout */
+    .main-container { flex: 1; display: flex; height: calc(100vh - 65px); }
+    
+    /* Sidebar / Settings */
+    .sidebar {
+      width: 280px;
+      background: var(--card-bg);
+      border-right: 1px solid var(--card-border);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .setting-group { display: flex; flex-direction: column; gap: 6px; }
+    .setting-group label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: flex; justify-content: space-between; }
+    .setting-group input[type="range"] { accent-color: var(--primary); }
+    .stats-card {
+      margin-top: auto;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .stat-row { display: flex; justify-content: space-between; color: var(--text-muted); }
+    .stat-val { color: var(--text); font-weight: 600; font-family: monospace; }
+
+    /* Chat Area */
+    .chat-area { flex: 1; display: flex; flex-direction: column; height: 100%; }
+    .messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .message { display: flex; gap: 12px; max-width: 80%; line-height: 1.55; font-size: 0.95rem; }
+    .message.user { align-self: flex-end; flex-direction: row-reverse; }
+    .message.ai { align-self: flex-start; }
+    .avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .avatar-user { background: var(--primary); color: white; }
+    .avatar-ai { background: #4f46e5; color: white; }
+    .bubble {
+      padding: 12px 16px;
+      border-radius: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .message.user .bubble { background: var(--user-bubble); color: white; border-bottom-right-radius: 2px; }
+    .message.ai .bubble { background: var(--ai-bubble); color: var(--text); border-bottom-left-radius: 2px; border: 1px solid var(--card-border); }
+    .cursor { display: inline-block; width: 6px; height: 16px; background: var(--primary); margin-left: 4px; vertical-align: middle; animation: blink 1s infinite; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    /* Input Box */
+    .input-bar {
+      padding: 16px 24px;
+      background: var(--card-bg);
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      gap: 12px;
+    }
+    .input-bar textarea {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--text);
+      font-size: 0.95rem;
+      resize: none;
+      height: 48px;
+      outline: none;
+    }
+    .input-bar textarea:focus { border-color: var(--primary); }
+    .btn-send {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 0 20px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-send:hover { background: var(--primary-hover); }
+    .btn-send:disabled { background: #374151; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="status-dot"></div>
+      <div class="brand-title">Chimera-Inference</div>
+      <span class="badge badge-gpu" id="device-badge">NVIDIA RTX 3050 (CUDA)</span>
+    </div>
+    <div id="status-text" style="font-size: 0.85rem; color: var(--text-muted);">Terhubung ke http://localhost:8000</div>
+  </header>
+
+  <div class="main-container">
+    <!-- Sidebar Settings -->
+    <aside class="sidebar">
+      <div style="font-weight: 700; font-size: 0.9rem;">Parameter Sampling SOTA</div>
+      
+      <div class="setting-group">
+        <label>Temperature <span id="temp-val">0.7</span></label>
+        <input type="range" id="temp-input" min="0" max="1.5" step="0.05" value="0.7">
+      </div>
+
+      <div class="setting-group">
+        <label>Min-P (SOTA) <span id="minp-val">0.05</span></label>
+        <input type="range" id="minp-input" min="0" max="0.3" step="0.01" value="0.05">
+      </div>
+
+      <div class="setting-group">
+        <label>Max Tokens <span id="tokens-val">128</span></label>
+        <input type="range" id="tokens-input" min="16" max="512" step="16" value="128">
+      </div>
+
+      <div class="setting-group" style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
+        <label for="spec-toggle" style="margin-bottom: 0; cursor: pointer; font-size: 0.85rem;">⚡ Speculative Boost</label>
+        <input type="checkbox" id="spec-toggle" checked style="cursor: pointer; width: 18px; height: 18px; accent-color: var(--primary);">
+      </div>
+
+      <div class="stats-card">
+        <div style="font-weight: 600; color: #f3f4f6; margin-bottom: 4px;">Telemetri Generasi</div>
+        <div class="stat-row"><span>Throughput:</span><span class="stat-val" id="stat-tps">- tok/s</span></div>
+        <div class="stat-row"><span>Waktu Total:</span><span class="stat-val" id="stat-time">- s</span></div>
+        <div class="stat-row"><span>VRAM Terpakai:</span><span class="stat-val" id="stat-vram">3,038 MiB</span></div>
+      </div>
+    </aside>
+
+    <!-- Chat Area -->
+    <main class="chat-area">
+      <div class="messages-container" id="messages-container">
+        <div class="message ai">
+          <div class="avatar avatar-ai">AI</div>
+          <div class="bubble">Halo! Saya model Qwen 2.5 yang berjalan 100% lokal pada GPU NVIDIA GeForce RTX 3050 Anda melalui Chimera-Inference Engine dengan akselerasi <strong>Heterogeneous Speculative Decoding</strong>. Silakan ajukan pertanyaan atau perintah apa pun!</div>
+        </div>
+      </div>
+
+      <div class="input-bar">
+        <textarea id="prompt-input" placeholder="Ketik pesan Anda di sini... (Enter untuk kirim, Shift+Enter untuk baris baru)"></textarea>
+        <button class="btn-send" id="send-btn">Kirim</button>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const messagesContainer = document.getElementById('messages-container');
+    const promptInput = document.getElementById('prompt-input');
+    const sendBtn = document.getElementById('send-btn');
+    const tempInput = document.getElementById('temp-input');
+    const tempVal = document.getElementById('temp-val');
+    const minpInput = document.getElementById('minp-input');
+    const minpVal = document.getElementById('minp-val');
+    const tokensInput = document.getElementById('tokens-input');
+    const tokensVal = document.getElementById('tokens-val');
+    const specToggle = document.getElementById('spec-toggle');
+    const statTps = document.getElementById('stat-tps');
+    const statTime = document.getElementById('stat-time');
+    const statVram = document.getElementById('stat-vram');
+
+    let chatHistory = [];
+
+    // Sliders
+    tempInput.oninput = () => tempVal.textContent = tempInput.value;
+    minpInput.oninput = () => minpVal.textContent = minpInput.value;
+    tokensInput.oninput = () => tokensVal.textContent = tokensInput.value;
+
+    // Check health probe
+    fetch('http://localhost:8000/health')
+      .then(res => res.json())
+      .then(data => {
+        if (data.vram_allocated_mb) {
+          statVram.textContent = `${Math.round(data.vram_allocated_mb)} MiB`;
+        }
+      })
+      .catch(err => {
+        document.getElementById('status-text').textContent = 'Server tidak terdeteksi di localhost:8000';
+        document.getElementById('status-text').style.color = '#ef4444';
+      });
+
+    async function sendMessage() {
+      const text = promptInput.value.trim();
+      if (!text || sendBtn.disabled) return;
+
+      // Add user message
+      promptInput.value = '';
+      sendBtn.disabled = true;
+      appendMessage('user', text);
+      chatHistory.push({ role: 'user', content: text });
+
+      // Add AI bubble placeholder
+      const aiBubble = appendMessage('ai', '');
+      const cursor = document.createElement('span');
+      cursor.className = 'cursor';
+      aiBubble.appendChild(cursor);
+
+      const startTime = performance.now();
+      let tokenCount = 0;
+      let fullResponse = '';
+
+      try {
+        const response = await fetch('http://localhost:8000/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'qwen2.5-1.5b-instruct',
+            messages: chatHistory,
+            temperature: parseFloat(tempInput.value),
+            min_p: parseFloat(minpInput.value),
+            max_tokens: parseInt(tokensInput.value),
+            stream: true,
+            use_speculative: specToggle ? specToggle.checked : true
+          })
+        });
+
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // Keep partial line
+
+          for (const line of lines) {
+            const cleanLine = line.trim();
+            if (cleanLine.startsWith('data: ') && cleanLine !== 'data: [DONE]') {
+              try {
+                const parsed = JSON.parse(cleanLine.substring(6));
+                const delta = parsed.choices[0]?.delta?.content || '';
+                if (delta) {
+                  fullResponse += delta;
+                  aiBubble.textContent = fullResponse;
+                  aiBubble.appendChild(cursor);
+                  tokenCount++;
+                  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+                  // Update live stats
+                  const elapsed = (performance.now() - startTime) / 1000;
+                  statTps.textContent = `${(tokenCount / elapsed).toFixed(1)} tok/s`;
+                  statTime.textContent = `${elapsed.toFixed(1)} s`;
+                }
+              } catch (e) {}
+            }
+          }
+        }
+
+        cursor.remove();
+        chatHistory.push({ role: 'assistant', content: fullResponse });
+      } catch (err) {
+        cursor.remove();
+        aiBubble.textContent = `[Error: ${err.message}]`;
+        aiBubble.style.color = '#ef4444';
+      } finally {
+        sendBtn.disabled = false;
+        promptInput.focus();
+      }
+    }
+
+    function appendMessage(role, text) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `message ${role}`;
+      
+      const avatar = document.createElement('div');
+      avatar.className = `avatar avatar-${role}`;
+      avatar.textContent = role === 'user' ? 'Anda' : 'AI';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+
+      msgDiv.appendChild(avatar);
+      msgDiv.appendChild(bubble);
+      messagesContainer.appendChild(msgDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      return bubble;
+    }
+
+    sendBtn.onclick = sendMessage;
+    promptInput.onkeydown = (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    };
+  </script>
+</body>
+</html>

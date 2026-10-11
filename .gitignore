@@ -1,0 +1,45 @@
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Testing & Linting
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# C++ Shared libraries & build binaries
+*.so
+*.o
+*.a
+benchmarks/cpu_affinity_benchmark
+tools/*.bin
+
+# LLM model weights and blobs (do not commit gigabyte checkpoints)
+*.gguf
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.onnx
+
+# Environment & credentials
+.env
+*.pem
+*.key
+
+# IDE & System
+.vscode/
+.idea/
+.DS_Store
+*.log
