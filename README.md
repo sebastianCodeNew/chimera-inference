@@ -1,6 +1,6 @@
 # Chimera-Inference Engine 🚀
 
-[![Tests](https://img.shields.io/badge/pytest-118%20passed-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/pytest-119%20passed-brightgreen.svg)](tests/)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Hardware](https://img.shields.io/badge/target-RTX%203050%204GB%20%2B%20i5--12500H-orange.svg)]()
@@ -78,6 +78,35 @@ Features automated Pareto frontier discovery, quantization spectrum profiling (B
 | **27** | **K2-Horizon-7B + K2-0.9B [MISMATCHED VOCAB]** | 46.9 | **3.8** | 4,095 | **31.7** | - | **Degraded / Toxic Speculative Pair (-30% slowdown)** |
 
 *\*SOTA = Pareto-Optimal Candidate (Non-dominated in Intelligence vs Speed vs VRAM budget).*
+
+---
+
+## ⚔️ Head-to-Head Empirical Benchmark: Chimera vs. llama.cpp
+
+Empirical, reproducible comparison on the target hardware (**Intel Core i5-12500H + NVIDIA RTX 3050 4GB VRAM**) evaluating `Qwen 2.5 1.5B Instruct` (`Q4_K_M` GGUF):
+
+| Engine / Configuration | Device | Prompt Type | TTFT (ms) | Prefill (tok/s) | Decode (tok/s) | Peak VRAM (MiB) | Total Time (s) |
+| :--- | :---: | :--- | :---: | :---: | :---: | :---: | :---: |
+| 🚀 **Chimera-CUDA** | `CUDA` | QA Theory | **50.5 ms** | **396.3** | **32.7 tok/s** | 3,818 MiB | **1.00 s** |
+| 🐢 **llama.cpp-CUDA** | `CUDA` | QA Theory | 447.7 ms | 44.7 | 2.5 tok/s | 1,721 MiB | 13.38 s |
+| ⚡ **Chimera-CUDA-Speculative** | `CUDA` | QA Theory | **55.7 ms** | **359.2** | **29.0 tok/s** | 3,818 MiB | **1.12 s** |
+| 🐢 **llama.cpp-CUDA-Speculative** | `CUDA` | QA Theory | 466.6 ms | 42.9 | 2.4 tok/s | 3,913 MiB | 13.65 s |
+| 💻 **Chimera-CPU (P-Core Pinned)** | `CPU` | QA Theory | 8,126.9 ms | 2.5 | 1.7 tok/s | 0 MiB | 26.75 s |
+| 🚀 **Chimera-CUDA** | `CUDA` | Code Quicksort | **70.1 ms** | **313.8** | **27.4 tok/s** | 3,868 MiB | **1.20 s** |
+| 🐢 **llama.cpp-CUDA** | `CUDA` | Code Quicksort | 424.7 ms | 51.8 | 2.5 tok/s | 1,770 MiB | 13.20 s |
+| ⚡ **Chimera-CUDA-Speculative** | `CUDA` | Code Quicksort | **43.3 ms** | **507.7** | **27.6 tok/s** | 3,914 MiB | **1.17 s** |
+| 🐢 **llama.cpp-CUDA-Speculative** | `CUDA` | Code Quicksort | 426.8 ms | 51.5 | 2.4 tok/s | 3,842 MiB | 13.53 s |
+| 💻 **Chimera-CPU (P-Core Pinned)** | `CPU` | Code Quicksort | 8,588.6 ms | 2.6 | 1.7 tok/s | 0 MiB | 26.93 s |
+
+### Key Architectural Takeaways:
+* **~11x - 13x Faster Decoding:** Chimera keeps 100% of the model layers and KV cache inside high-speed GPU VRAM (3,818 MiB allocated), eliminating slow PCIe bus transfer penalties that throttle default llama-server configurations.
+* **~8.8x Faster Time-To-First-Token:** Fused SDPA FlashAttention Tensor Core primitives process initial prompt sequences in 43–70 ms.
+* **92% Reduction in GPU Active Time:** Generating 32 tokens takes ~1.1s on Chimera vs ~13.4s on llama.cpp, dramatically conserving laptop battery and preventing thermal throttling.
+* **Reproduce the Benchmark:**
+  ```bash
+  PYTHONPATH=. .venv/bin/python benchmarks/benchmark_chimera_vs_llamacpp.py --tokens 32
+  ```
+  Full report available in [`benchmarks/chimera_vs_llamacpp_report.md`](benchmarks/chimera_vs_llamacpp_report.md).
 
 ---
 

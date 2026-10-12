@@ -11,6 +11,7 @@ from __future__ import annotations
 import time
 import uuid
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -240,6 +241,20 @@ def create_app(
                     "code": 500,
                 }
             },
+        )
+
+    web_file = Path(__file__).resolve().parent.parent / "web" / "index.html"
+
+    @app.get("/", include_in_schema=False)
+    @app.get("/chat", include_in_schema=False)
+    async def get_chat_ui() -> Response:
+        """Serve interactive Web Chat UI directly on root endpoint."""
+        if web_file.exists():
+            from fastapi.responses import FileResponse
+
+            return FileResponse(str(web_file), media_type="text/html")
+        return Response(
+            content="<h1>Chimera-Inference Engine API</h1>", media_type="text/html"
         )
 
     @app.get("/health", response_model=HealthResponse)
